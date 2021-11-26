@@ -49,7 +49,7 @@
 </head>
 <body>
 <center><h1> Decentralized Demo</h1></center>
-<div style="text-align: right;font-size: large"><a href="/logout">Logout</a></div>
+<div style="text-align: right;font-size: large"><a href="/logout?ledgerId=<%=session.getAttribute("ledgerId")%>">Logout</a></div>
 <form>
     <div class="container">
         <div style="color: #1f2980; font-size: x-large">${success}</div>

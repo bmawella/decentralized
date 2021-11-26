@@ -1,4 +1,8 @@
 package com.wiley.decentralized.service;
+import org.springframework.stereotype.Service;
 
-public class UserServiceImpl implements UserService{
+@Service
+public class UserServiceImpl implements UserService {
+
+
 }

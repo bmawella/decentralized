@@ -1,8 +1,19 @@
 package com.wiley.decentralized.controller;
 
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
 import java.util.Map;
 
+import com.wiley.decentralized.model.User;
+import com.wiley.decentralized.service.Connector;
+import com.wiley.decentralized.service.UserService;
+import org.hyperledger.fabric.gateway.Contract;
+import org.hyperledger.fabric.gateway.Gateway;
+import org.hyperledger.fabric.gateway.Network;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -10,25 +21,41 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 
 @Controller
 public class LoginController {
 
+    @Autowired
+    UserService userService;
 
     @RequestMapping(value = "/", method = RequestMethod.GET)
     public String login(Map<String, Object> model, HttpServletRequest request) {
-        //final String name = request.getParameter("name");
         model.put("message", "");
         return "login";
     }
 
     @RequestMapping(value = "/login-action", method = RequestMethod.POST)
     public String loginAction(Map<String, Object> model, HttpServletRequest request,
-                              HttpServletResponse response) {
+                              HttpServletResponse response, HttpSession httpSession) {
         final String username = request.getParameter("username");
         final String password = request.getParameter("password");
+        User user;
+        try {
+            final Gateway gateway = Connector.connect();
+            // get the network and contract
+            Network network = gateway.getNetwork("mychannel");
+            Contract contract = network.getContract("basic");
+            byte[] result = contract.evaluateTransaction("authenticate", username,password);
+            user = (User)getObject(result);
 
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        httpSession.setAttribute("ledgerId", "buddhika");
         if (username.equals("buddhika") && password.equals("123")) {
             Cookie cookie = new Cookie("user-authenticated", "true");
             cookie.setMaxAge(-1);
@@ -56,6 +83,23 @@ public class LoginController {
     @RequestMapping(value = "/logout", method = RequestMethod.GET)
     public String logout(Map<String, Object> model, HttpServletRequest request, HttpServletResponse response) {
         model.put("message", "");
+
+        final String leadgerId = request.getParameter("ledgerId");
+
+        byte[] result = new byte[0];
+
+        // connect to the network and invoke the smart contract
+        try  {
+            final Gateway gateway = Connector.connect();
+            Network network = gateway.getNetwork("mychannel");
+            Contract contract = network.getContract("basic");
+
+            result = contract.submitTransaction("logout", leadgerId);
+
+        }catch(Exception e){
+            System.err.println(e);
+        }
+
 
         deleteCookie(request, response);
         return "redirect:/";
@@ -85,5 +129,11 @@ public class LoginController {
                 }
             }
         }
+    }
+
+    private static Object getObject(byte[] byteArr) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream bis = new ByteArrayInputStream(byteArr);
+        ObjectInput in = new ObjectInputStream(bis);
+        return in.readObject();
     }
 }
